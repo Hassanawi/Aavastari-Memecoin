@@ -7,12 +7,12 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract Presale is ReentrancyGuard, Context, Ownable {
+contract Presale is  ReentrancyGuard, Context, Ownable {
     using SafeMath for uint256;
     
     mapping (address => uint256) public _contributions;
 
-    IERC20 public token;
+    IERC20 public _token;
     uint256 private _tokenDecimals;
     address payable public _wallet;
     uint256 public _rate;
@@ -25,10 +25,12 @@ contract Presale is ReentrancyGuard, Context, Ownable {
     uint public availableTokensICO;
     bool public startRefund = false;
     uint256 public refundStartDate;
+    uint256 public nftWinPrice;
+    address[] public nftWinners;
 
     event TokensPurchased(address  purchaser, address  beneficiary, uint256 value, uint256 amount);
     event Refund(address recipient, uint256 amount);
-    constructor (uint256 rate, address payable wallet, IERC20 token, uint256 tokenDecimals)  {
+    constructor (uint256 rate, address payable wallet,IERC20 token, uint256 tokenDecimals)  {
         require(rate > 0, "Pre-Sale: rate is 0");
         require(wallet != address(0), "Pre-Sale: wallet is the zero address");
         require(address(token) != address(0), "Pre-Sale: token is the zero address");
@@ -52,7 +54,7 @@ contract Presale is ReentrancyGuard, Context, Ownable {
     
     
     //Start Pre-Sale
-    function startICO(uint endDate, uint _minPurchase, uint _maxPurchase, uint _softCap, uint _hardCap) external onlyOwner icoNotActive() {
+    function startICO(uint endDate, uint _minPurchase, uint _maxPurchase, uint _softCap, uint _hardCap,uint256 _nftWinPrice) external onlyOwner icoNotActive() {
         startRefund = false;
         refundStartDate = 0;
         availableTokensICO = _token.balanceOf(address(this));
@@ -67,6 +69,7 @@ contract Presale is ReentrancyGuard, Context, Ownable {
         softCap = _softCap;
         hardCap = _hardCap;
         _weiRaised = 0;
+        nftWinPrice = _nftWinPrice;
     }
     
     function stopICO() external onlyOwner icoActive(){
@@ -80,6 +83,7 @@ contract Presale is ReentrancyGuard, Context, Ownable {
         }
     }
     
+
     
     //Pre-Sale 
     function buyTokens(address beneficiary) public nonReentrant icoActive payable {
@@ -90,6 +94,9 @@ contract Presale is ReentrancyGuard, Context, Ownable {
         availableTokensICO = availableTokensICO - tokens;
         _contributions[beneficiary] = _contributions[beneficiary].add(weiAmount);
         emit TokensPurchased(_msgSender(), beneficiary, weiAmount, tokens);
+        if (weiAmount >= nftWinPrice){
+            nftWinners.push(beneficiary);
+        }
     }
 
     function _preValidatePurchase(address beneficiary, uint256 weiAmount) internal view {
